@@ -1,0 +1,6 @@
+{
+  "name": "Studio Social - Creatore di Post Grafici",
+  "description": "Studio grafico offline e veloce per creare post social, collage foto e testo, con librerie di icone, forme, font e sfondi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
