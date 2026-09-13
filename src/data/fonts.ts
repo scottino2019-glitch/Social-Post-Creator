@@ -45,6 +45,13 @@ export const FONT_LIST: FontDefinition[] = [
     weights: ['600', '800'],
     description: 'Artistico ed espressivo',
   },
+  {
+    family: 'Zen Kaku Gothic New',
+    name: 'Zen Kaku Gothic',
+    category: 'sans',
+    weights: ['400', '500', '700'],
+    description: 'Gothico giapponese moderno e lineare',
+  },
 
   // Serif
   {
@@ -119,6 +126,55 @@ export const FONT_LIST: FontDefinition[] = [
     weights: ['400'],
     description: 'Tipografia editoriale audace',
   },
+  {
+    family: 'Bungee Tint',
+    name: 'Bungee Tint',
+    category: 'display',
+    weights: ['400'],
+    description: 'Stile urbano colorato e impattante',
+  },
+  {
+    family: 'Henny Penny',
+    name: 'Henny Penny',
+    category: 'display',
+    weights: ['400'],
+    description: 'Stravagante, giocoso e fiabesco',
+  },
+  {
+    family: 'Londrina Shadow',
+    name: 'Londrina Shadow',
+    category: 'display',
+    weights: ['400'],
+    description: 'Titoli ombrati dallo stile poster brasiliano',
+  },
+  {
+    family: 'Londrina Sketch',
+    name: 'Londrina Sketch',
+    category: 'display',
+    weights: ['400'],
+    description: 'Effetto bozzetto fatto a mano',
+  },
+  {
+    family: 'Rock 3D',
+    name: 'Rock 3D',
+    category: 'display',
+    weights: ['400'],
+    description: 'Effetto tridimensionale audace e geometrico',
+  },
+  {
+    family: 'Noto Color Emoji',
+    name: 'Noto Color Emoji',
+    category: 'display',
+    weights: ['400'],
+    description: 'Set di emoji a colori standard Google',
+  },
+  {
+    family: 'Noto Emoji',
+    name: 'Noto Emoji',
+    category: 'display',
+    weights: ['400', '500', '600', '700'],
+    description: 'Emoji vettoriali monocromatiche',
+  },
 
   // Handwriting / Script
   {
@@ -183,6 +239,62 @@ export const FONT_LIST: FontDefinition[] = [
     category: 'handwriting',
     weights: ['400'],
     description: 'Tratto deciso con pennarello',
+  },
+  {
+    family: 'Crafty Girls',
+    name: 'Crafty Girls',
+    category: 'handwriting',
+    weights: ['400'],
+    description: 'Scrittura a mano informale e divertente',
+  },
+  {
+    family: 'Gaegu',
+    name: 'Gaegu',
+    category: 'handwriting',
+    weights: ['400', '700'],
+    description: 'Stile coreano disegnato a mano e carino',
+  },
+  {
+    family: 'Long Cang',
+    name: 'Long Cang',
+    category: 'handwriting',
+    weights: ['400'],
+    description: 'Calligrafia cinese corsiva a pennello',
+  },
+  {
+    family: 'Ma Shan Zheng',
+    name: 'Ma Shan Zheng',
+    category: 'handwriting',
+    weights: ['400'],
+    description: 'Calligrafia cinese a pennello espressiva',
+  },
+  {
+    family: 'Mr Dafoe',
+    name: 'Mr Dafoe',
+    category: 'handwriting',
+    weights: ['400'],
+    description: 'Corsivo retrò stile insegna classica',
+  },
+  {
+    family: 'Nanum Brush Script',
+    name: 'Nanum Brush Script',
+    category: 'handwriting',
+    weights: ['400'],
+    description: 'Calligrafia coreana a pennello',
+  },
+  {
+    family: 'Playwrite HR Lijeva',
+    name: 'Playwrite HR Lijeva',
+    category: 'handwriting',
+    weights: ['100', '400'],
+    description: 'Corsivo scolastico personalizzabile',
+  },
+  {
+    family: 'Rock Salt',
+    name: 'Rock Salt',
+    category: 'handwriting',
+    weights: ['400'],
+    description: 'Tratto energico a pennarello feltro',
   },
 
   // Monospace / Retro
