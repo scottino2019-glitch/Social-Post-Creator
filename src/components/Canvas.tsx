@@ -82,13 +82,26 @@ export const Canvas: React.FC<CanvasProps> = ({
     handle: string | null = null
   ) => {
     e.stopPropagation();
-    const layer = project.layers.find((l) => l.id === layerId);
+
+    let targetId = layerId;
+
+    // If handle is provided (corner, edge, rotate), user is interacting with handles of layerId
+    if (!handle) {
+      // If user clicks on the currently selected layer, keep dragging this layer
+      if (selectedLayerId === layerId) {
+        targetId = selectedLayerId;
+      } else {
+        targetId = layerId;
+      }
+    }
+
+    const layer = project.layers.find((l) => l.id === targetId);
     if (!layer || layer.isLocked) {
-      onSelectLayer(layerId);
+      onSelectLayer(targetId);
       return;
     }
 
-    onSelectLayer(layerId);
+    onSelectLayer(targetId);
     setIsDragging(true);
     setDragHandle(handle);
     setDragStart({
@@ -100,14 +113,13 @@ export const Canvas: React.FC<CanvasProps> = ({
       height: layer.height,
       rotation: layer.rotation,
     });
-
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
 
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!isDragging || !dragStart || !selectedLayer || selectedLayer.isLocked) return;
+  // Robust window-level pointermove & pointerup while dragging
+  useEffect(() => {
+    if (!isDragging || !dragStart || !selectedLayer || selectedLayer.isLocked) return;
 
+    const handleWindowPointerMove = (e: PointerEvent) => {
       const deltaX = (e.clientX - dragStart.mouseX) / zoom;
       const deltaY = (e.clientY - dragStart.mouseY) / zoom;
 
@@ -125,14 +137,14 @@ export const Canvas: React.FC<CanvasProps> = ({
         const radians = Math.atan2(e.clientY - centerY, e.clientX - centerX);
         let deg = Math.round((radians * 180) / Math.PI) - 90;
         deg = (deg % 360 + 360) % 360;
-        // Snap to 0, 90, 180, 270 if close
+        // Snap to cardinal angles
         if (Math.abs(deg) < 4 || Math.abs(deg - 360) < 4) deg = 0;
         if (Math.abs(deg - 90) < 4) deg = 90;
         if (Math.abs(deg - 180) < 4) deg = 180;
         if (Math.abs(deg - 270) < 4) deg = 270;
         onUpdateLayer(selectedLayer.id, { rotation: deg });
       } else {
-        // Resize handles: nw, ne, se, sw, n, s, e, w
+        // Resize handles
         let newX = dragStart.x;
         let newY = dragStart.y;
         let newW = dragStart.width;
@@ -163,22 +175,21 @@ export const Canvas: React.FC<CanvasProps> = ({
           height: newH,
         });
       }
-    },
-    [isDragging, dragStart, selectedLayer, dragHandle, zoom, onUpdateLayer, exportRef]
-  );
+    };
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (isDragging) {
+    const handleWindowPointerUp = () => {
       setIsDragging(false);
       setDragHandle(null);
       setDragStart(null);
-      try {
-        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-      } catch {
-        // ignore if not captured
-      }
-    }
-  };
+    };
+
+    window.addEventListener('pointermove', handleWindowPointerMove);
+    window.addEventListener('pointerup', handleWindowPointerUp);
+    return () => {
+      window.removeEventListener('pointermove', handleWindowPointerMove);
+      window.removeEventListener('pointerup', handleWindowPointerUp);
+    };
+  }, [isDragging, dragStart, selectedLayer, dragHandle, zoom, onUpdateLayer, exportRef]);
 
   // Keyboard nudge with arrow keys & Delete key
   useEffect(() => {
@@ -523,8 +534,6 @@ export const Canvas: React.FC<CanvasProps> = ({
           id="social-export-canvas"
           className="w-full h-full relative overflow-hidden select-none"
           style={getBackgroundStyle()}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
         >
           {/* Subtle noise/texture overlay if requested */}
           {project.background.imageOpacity && project.background.imageUrl && (
@@ -540,9 +549,8 @@ export const Canvas: React.FC<CanvasProps> = ({
           )}
 
           {/* Render all visible layers in stack order */}
-          {project.layers.map((layer) => {
+          {project.layers.map((layer, index) => {
             if (layer.isHidden) return null;
-            const isSelected = layer.id === selectedLayerId;
 
             const shadowStyle = layer.shadow
               ? `${layer.shadow.offsetX}px ${layer.shadow.offsetY}px ${layer.shadow.blur}px ${layer.shadow.color}`
@@ -561,83 +569,116 @@ export const Canvas: React.FC<CanvasProps> = ({
                   transform: `rotate(${layer.rotation}deg)`,
                   opacity: layer.opacity,
                   boxShadow: shadowStyle,
-                  zIndex: isSelected ? 50 : undefined,
+                  zIndex: 10 + index,
                 }}
                 onPointerDown={(e) => handlePointerDown(e, layer.id, null)}
               >
                 {renderLayerContent(layer)}
-
-                {/* Selection Bounding Box & Handles */}
-                {isSelected && (
-                  <div
-                    className="absolute -inset-1 border-2 border-indigo-500 pointer-events-none rounded-xs"
-                    style={{
-                      boxShadow: '0 0 0 1px rgba(255,255,255,0.4)',
-                    }}
-                  >
-                    {/* Locked Indicator */}
-                    {layer.isLocked && (
-                      <div className="absolute top-1 right-1 bg-amber-500 text-white p-1 rounded shadow pointer-events-auto">
-                        <Lock className="w-3 h-3" />
-                      </div>
-                    )}
-
-                    {/* Resize and Rotate Handles if not locked */}
-                    {!layer.isLocked && (
-                      <>
-                        {/* Rotation Handle */}
-                        <div
-                          className="absolute -top-7 left-1/2 -translate-x-1/2 w-5 h-5 bg-white border-2 border-indigo-600 rounded-full shadow flex items-center justify-center pointer-events-auto cursor-grab active:cursor-grabbing hover:scale-115 transition-transform"
-                          onPointerDown={(e) => handlePointerDown(e, layer.id, 'rot')}
-                          title="Ruota livello"
-                        >
-                          <RotateCw className="w-3 h-3 text-indigo-600" />
-                        </div>
-                        {/* Connecting Line to Rotation Handle */}
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-indigo-500" />
-
-                        {/* Corner Handles */}
-                        <div
-                          className="absolute -top-2 -left-2 w-3.5 h-3.5 bg-white border-2 border-indigo-600 rounded-full pointer-events-auto cursor-nwse-resize shadow"
-                          onPointerDown={(e) => handlePointerDown(e, layer.id, 'nw')}
-                        />
-                        <div
-                          className="absolute -top-2 -right-2 w-3.5 h-3.5 bg-white border-2 border-indigo-600 rounded-full pointer-events-auto cursor-nesw-resize shadow"
-                          onPointerDown={(e) => handlePointerDown(e, layer.id, 'ne')}
-                        />
-                        <div
-                          className="absolute -bottom-2 -left-2 w-3.5 h-3.5 bg-white border-2 border-indigo-600 rounded-full pointer-events-auto cursor-nesw-resize shadow"
-                          onPointerDown={(e) => handlePointerDown(e, layer.id, 'sw')}
-                        />
-                        <div
-                          className="absolute -bottom-2 -right-2 w-3.5 h-3.5 bg-white border-2 border-indigo-600 rounded-full pointer-events-auto cursor-nwse-resize shadow"
-                          onPointerDown={(e) => handlePointerDown(e, layer.id, 'se')}
-                        />
-
-                        {/* Edge Handles */}
-                        <div
-                          className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-indigo-600 rounded-xs pointer-events-auto cursor-ns-resize shadow"
-                          onPointerDown={(e) => handlePointerDown(e, layer.id, 'n')}
-                        />
-                        <div
-                          className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-indigo-600 rounded-xs pointer-events-auto cursor-ns-resize shadow"
-                          onPointerDown={(e) => handlePointerDown(e, layer.id, 's')}
-                        />
-                        <div
-                          className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 bg-white border-2 border-indigo-600 rounded-xs pointer-events-auto cursor-ew-resize shadow"
-                          onPointerDown={(e) => handlePointerDown(e, layer.id, 'w')}
-                        />
-                        <div
-                          className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-white border-2 border-indigo-600 rounded-xs pointer-events-auto cursor-ew-resize shadow"
-                          onPointerDown={(e) => handlePointerDown(e, layer.id, 'e')}
-                        />
-                      </>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}
+
+          {/* Active Selection Bounding Box & Handles Overlay (zIndex 9000: always stays on top of all canvas layers) */}
+          {selectedLayer && !selectedLayer.isHidden && (
+            <div
+              key={`selection-overlay-${selectedLayer.id}`}
+              id="selected-layer-overlay"
+              className="absolute pointer-events-none"
+              style={{
+                left: `${selectedLayer.x}px`,
+                top: `${selectedLayer.y}px`,
+                width: `${selectedLayer.width}px`,
+                height: `${selectedLayer.height}px`,
+                transform: `rotate(${selectedLayer.rotation}deg)`,
+                zIndex: 9000,
+              }}
+            >
+              {/* Inner draggable grab-area: allows smooth movement of the selected layer even if other layers overlap it */}
+              {!selectedLayer.isLocked && (
+                <div
+                  className="absolute inset-0 pointer-events-auto cursor-move"
+                  title="Trascina per spostare sulla scena"
+                  onPointerDown={(e) => handlePointerDown(e, selectedLayer.id, null)}
+                  onDoubleClick={() => {
+                    if (selectedLayer.type === 'text') {
+                      setEditingTextId(selectedLayer.id);
+                    }
+                  }}
+                />
+              )}
+
+              {/* Visual position pill indicator while dragging or selected */}
+              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 text-indigo-200 border border-indigo-500/40 text-[9px] font-mono px-1.5 py-0.5 rounded shadow pointer-events-none whitespace-nowrap">
+                X: {selectedLayer.x}px • Y: {selectedLayer.y}px
+              </div>
+
+              <div
+                className="absolute -inset-1 border-2 border-indigo-500 pointer-events-none rounded-xs"
+                style={{
+                  boxShadow: '0 0 0 1px rgba(255,255,255,0.4)',
+                }}
+              >
+                {/* Locked Indicator */}
+                {selectedLayer.isLocked && (
+                  <div className="absolute top-1 right-1 bg-amber-500 text-white p-1 rounded shadow pointer-events-auto">
+                    <Lock className="w-3 h-3" />
+                  </div>
+                )}
+
+                {/* Resize and Rotate Handles if not locked */}
+                {!selectedLayer.isLocked && (
+                  <>
+                    {/* Rotation Handle */}
+                    <div
+                      className="absolute -top-7 left-1/2 -translate-x-1/2 w-5 h-5 bg-white border-2 border-indigo-600 rounded-full shadow flex items-center justify-center pointer-events-auto cursor-grab active:cursor-grabbing hover:scale-115 transition-transform"
+                      onPointerDown={(e) => handlePointerDown(e, selectedLayer.id, 'rot')}
+                      title="Ruota livello"
+                    >
+                      <RotateCw className="w-3 h-3 text-indigo-600" />
+                    </div>
+                    {/* Connecting Line to Rotation Handle */}
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-indigo-500" />
+
+                    {/* Corner Handles */}
+                    <div
+                      className="absolute -top-2 -left-2 w-3.5 h-3.5 bg-white border-2 border-indigo-600 rounded-full pointer-events-auto cursor-nwse-resize shadow"
+                      onPointerDown={(e) => handlePointerDown(e, selectedLayer.id, 'nw')}
+                    />
+                    <div
+                      className="absolute -top-2 -right-2 w-3.5 h-3.5 bg-white border-2 border-indigo-600 rounded-full pointer-events-auto cursor-nesw-resize shadow"
+                      onPointerDown={(e) => handlePointerDown(e, selectedLayer.id, 'ne')}
+                    />
+                    <div
+                      className="absolute -bottom-2 -left-2 w-3.5 h-3.5 bg-white border-2 border-indigo-600 rounded-full pointer-events-auto cursor-nesw-resize shadow"
+                      onPointerDown={(e) => handlePointerDown(e, selectedLayer.id, 'sw')}
+                    />
+                    <div
+                      className="absolute -bottom-2 -right-2 w-3.5 h-3.5 bg-white border-2 border-indigo-600 rounded-full pointer-events-auto cursor-nwse-resize shadow"
+                      onPointerDown={(e) => handlePointerDown(e, selectedLayer.id, 'se')}
+                    />
+
+                    {/* Edge Handles */}
+                    <div
+                      className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-indigo-600 rounded-xs pointer-events-auto cursor-ns-resize shadow"
+                      onPointerDown={(e) => handlePointerDown(e, selectedLayer.id, 'n')}
+                    />
+                    <div
+                      className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-indigo-600 rounded-xs pointer-events-auto cursor-ns-resize shadow"
+                      onPointerDown={(e) => handlePointerDown(e, selectedLayer.id, 's')}
+                    />
+                    <div
+                      className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 bg-white border-2 border-indigo-600 rounded-xs pointer-events-auto cursor-ew-resize shadow"
+                      onPointerDown={(e) => handlePointerDown(e, selectedLayer.id, 'w')}
+                    />
+                    <div
+                      className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-white border-2 border-indigo-600 rounded-xs pointer-events-auto cursor-ew-resize shadow"
+                      onPointerDown={(e) => handlePointerDown(e, selectedLayer.id, 'e')}
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

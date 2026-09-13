@@ -36,6 +36,10 @@ import {
   Trash2,
   ChevronUp,
   ChevronDown,
+  ChevronsUp,
+  ChevronsDown,
+  ArrowUpDown,
+  LayoutList,
   Plus,
   Quote,
   Flame,
@@ -95,6 +99,10 @@ interface SidebarProps {
   onToggleLayerVisibility: (id: string) => void;
   onToggleLayerLock: (id: string) => void;
   onDeleteLayer: (id: string) => void;
+  onBringToFront?: (id: string) => void;
+  onSendToBack?: (id: string) => void;
+  onAutoStackLayers?: () => void;
+  onDistributeLayers?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -122,6 +130,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleLayerVisibility,
   onToggleLayerLock,
   onDeleteLayer,
+  onBringToFront,
+  onSendToBack,
+  onAutoStackLayers,
+  onDistributeLayers,
 }) => {
   // Filters & searches
   const [templateCategory, setTemplateCategory] = useState<string>('all');
@@ -1329,103 +1341,168 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Livelli ({layers.length})
                 </h2>
-                <span className="text-[10px] text-slate-500">Dall'alto verso il basso</span>
+                <span className="text-[10px] text-slate-500">Dall'alto verso il basso (primo piano → sfondo)</span>
               </div>
             </div>
+
+            {/* Quick Auto-arrangement on Scene */}
+            {layers.length > 1 && (
+              <div className="bg-slate-800/80 p-2 rounded-xl border border-slate-700/80 space-y-1.5">
+                <span className="text-[10px] font-semibold text-indigo-300 block uppercase tracking-wider">
+                  Sistemazione sulla Scena
+                </span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    onClick={() => onAutoStackLayers && onAutoStackLayers()}
+                    title="Allinea e separa tutti gli elementi in colonna senza sovrapporli"
+                    className="flex items-center justify-center space-x-1.5 py-1.5 px-2 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 rounded-lg text-indigo-200 text-[11px] font-medium transition-colors"
+                  >
+                    <LayoutList className="w-3.5 h-3.5" />
+                    <span>Disponi in Colonna</span>
+                  </button>
+                  <button
+                    onClick={() => onDistributeLayers && onDistributeLayers()}
+                    title="Distribuisci equamente lo spazio verticale tra gli elementi"
+                    className="flex items-center justify-center space-x-1.5 py-1.5 px-2 bg-slate-700/60 hover:bg-slate-700 border border-slate-600/60 rounded-lg text-slate-200 text-[11px] font-medium transition-colors"
+                  >
+                    <ArrowUpDown className="w-3.5 h-3.5" />
+                    <span>Distribuisci Spazi</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {layers.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-500">
                 Nessun elemento sulla tela. Aggiungi testo, forme o icone!
               </div>
             ) : (
-              <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1">
+              <div className="space-y-1.5 max-h-[460px] overflow-y-auto pr-1">
                 {/* Reversed order: top layers shown first */}
                 {[...layers].reverse().map((layer, revIdx) => {
                   const actualIdx = layers.length - 1 - revIdx;
                   const isSelected = layer.id === selectedLayerId;
+
+                  const getTypeIcon = () => {
+                    switch (layer.type) {
+                      case 'text':
+                        return <Type className="w-3.5 h-3.5 text-sky-400 shrink-0" />;
+                      case 'shape':
+                        return <Square className="w-3.5 h-3.5 text-indigo-400 shrink-0" />;
+                      case 'icon':
+                        return <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
+                      case 'image':
+                        return <ImageIcon className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
+                    }
+                  };
 
                   return (
                     <div
                       key={layer.id}
                       id={`layer-item-${layer.id}`}
                       onClick={() => onSelectLayer(layer.id)}
-                      className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition-all ${
+                      className={`flex flex-col p-2 rounded-xl border text-xs cursor-pointer transition-all ${
                         isSelected
                           ? 'bg-indigo-600/20 border-indigo-500 text-indigo-200 shadow-sm'
                           : 'bg-slate-800/70 border-slate-700/60 text-slate-300 hover:bg-slate-800'
                       }`}
                     >
-                      <div className="flex items-center space-x-2 min-w-0 flex-1">
-                        <span className="text-[10px] font-mono text-slate-500">
-                          #{actualIdx + 1}
-                        </span>
-                        <span className="truncate font-medium">{layer.name}</span>
-                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2 min-w-0 flex-1">
+                          {getTypeIcon()}
+                          <div className="min-w-0 flex-1">
+                            <span className="truncate font-medium block">{layer.name}</span>
+                            <span className="text-[9px] font-mono text-slate-500 block">
+                              X:{layer.x} Y:{layer.y} • {layer.width}×{layer.height}px
+                            </span>
+                          </div>
+                        </div>
 
-                      {/* Layer controls */}
-                      <div className="flex items-center space-x-1 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
-                        {/* Move Up */}
-                        <button
-                          onClick={() => {
-                            if (actualIdx < layers.length - 1) {
-                              onReorderLayer(actualIdx, actualIdx + 1);
-                            }
-                          }}
-                          disabled={actualIdx === layers.length - 1}
-                          title="Porta sopra"
-                          className="p-1 text-slate-400 hover:text-white disabled:opacity-20"
-                        >
-                          <ChevronUp className="w-3.5 h-3.5" />
-                        </button>
+                        {/* Layer controls */}
+                        <div className="flex items-center space-x-0.5 shrink-0 ml-1" onClick={(e) => e.stopPropagation()}>
+                          {/* Bring to absolute top */}
+                          <button
+                            onClick={() => onBringToFront && onBringToFront(layer.id)}
+                            disabled={actualIdx === layers.length - 1}
+                            title="Porta in cima (primo piano assoluto)"
+                            className="p-1 text-slate-400 hover:text-indigo-300 disabled:opacity-20"
+                          >
+                            <ChevronsUp className="w-3.5 h-3.5" />
+                          </button>
 
-                        {/* Move Down */}
-                        <button
-                          onClick={() => {
-                            if (actualIdx > 0) {
-                              onReorderLayer(actualIdx, actualIdx - 1);
-                            }
-                          }}
-                          disabled={actualIdx === 0}
-                          title="Porta sotto"
-                          className="p-1 text-slate-400 hover:text-white disabled:opacity-20"
-                        >
-                          <ChevronDown className="w-3.5 h-3.5" />
-                        </button>
+                          {/* Move 1 step Up */}
+                          <button
+                            onClick={() => {
+                              if (actualIdx < layers.length - 1) {
+                                onReorderLayer(actualIdx, actualIdx + 1);
+                              }
+                            }}
+                            disabled={actualIdx === layers.length - 1}
+                            title="Porta sopra (+1)"
+                            className="p-1 text-slate-400 hover:text-white disabled:opacity-20"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </button>
 
-                        {/* Visibility */}
-                        <button
-                          onClick={() => onToggleLayerVisibility(layer.id)}
-                          title={layer.isHidden ? 'Mostra livello' : 'Nascondi livello'}
-                          className={`p-1 ${layer.isHidden ? 'text-amber-400' : 'text-slate-400 hover:text-white'}`}
-                        >
-                          {layer.isHidden ? (
-                            <EyeOff className="w-3.5 h-3.5" />
-                          ) : (
-                            <Eye className="w-3.5 h-3.5" />
-                          )}
-                        </button>
+                          {/* Move 1 step Down */}
+                          <button
+                            onClick={() => {
+                              if (actualIdx > 0) {
+                                onReorderLayer(actualIdx, actualIdx - 1);
+                              }
+                            }}
+                            disabled={actualIdx === 0}
+                            title="Porta sotto (-1)"
+                            className="p-1 text-slate-400 hover:text-white disabled:opacity-20"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
 
-                        {/* Lock */}
-                        <button
-                          onClick={() => onToggleLayerLock(layer.id)}
-                          title={layer.isLocked ? 'Sblocca livello' : 'Blocca livello'}
-                          className={`p-1 ${layer.isLocked ? 'text-amber-400' : 'text-slate-400 hover:text-white'}`}
-                        >
-                          {layer.isLocked ? (
-                            <Lock className="w-3.5 h-3.5" />
-                          ) : (
-                            <Unlock className="w-3.5 h-3.5" />
-                          )}
-                        </button>
+                          {/* Send to absolute bottom */}
+                          <button
+                            onClick={() => onSendToBack && onSendToBack(layer.id)}
+                            disabled={actualIdx === 0}
+                            title="Invia in fondo (sullo sfondo assoluto)"
+                            className="p-1 text-slate-400 hover:text-amber-300 disabled:opacity-20"
+                          >
+                            <ChevronsDown className="w-3.5 h-3.5" />
+                          </button>
 
-                        {/* Delete */}
-                        <button
-                          onClick={() => onDeleteLayer(layer.id)}
-                          title="Elimina livello"
-                          className="p-1 text-slate-400 hover:text-rose-400 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                          {/* Visibility */}
+                          <button
+                            onClick={() => onToggleLayerVisibility(layer.id)}
+                            title={layer.isHidden ? 'Mostra livello' : 'Nascondi livello'}
+                            className={`p-1 ${layer.isHidden ? 'text-amber-400' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            {layer.isHidden ? (
+                              <EyeOff className="w-3.5 h-3.5" />
+                            ) : (
+                              <Eye className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+
+                          {/* Lock */}
+                          <button
+                            onClick={() => onToggleLayerLock(layer.id)}
+                            title={layer.isLocked ? 'Sblocca livello' : 'Blocca livello'}
+                            className={`p-1 ${layer.isLocked ? 'text-amber-400' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            {layer.isLocked ? (
+                              <Lock className="w-3.5 h-3.5" />
+                            ) : (
+                              <Unlock className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+
+                          {/* Delete */}
+                          <button
+                            onClick={() => onDeleteLayer(layer.id)}
+                            title="Elimina livello"
+                            className="p-1 text-slate-400 hover:text-rose-400 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );

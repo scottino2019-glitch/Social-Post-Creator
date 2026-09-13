@@ -261,9 +261,42 @@ export default function App() {
     const id = 'text_' + Date.now();
     let newLayer: Layer;
 
-    const centerX = Math.round(project.width * 0.1);
-    const centerY = Math.round(project.height * 0.4);
     const contentW = Math.round(project.width * 0.8);
+    const centerX = Math.round((project.width - contentW) / 2);
+
+    // Smart vertical layout slot per preset type to prevent overlapping
+    let targetY: number;
+    switch (presetType) {
+      case 'badge':
+        targetY = Math.round(project.height * 0.16);
+        break;
+      case 'title':
+        targetY = Math.round(project.height * 0.26);
+        break;
+      case 'subtitle':
+        targetY = Math.round(project.height * 0.44);
+        break;
+      case 'body':
+        targetY = Math.round(project.height * 0.56);
+        break;
+      case 'quote':
+        targetY = Math.round(project.height * 0.38);
+        break;
+      case 'handwriting':
+        targetY = Math.round(project.height * 0.70);
+        break;
+      default:
+        targetY = Math.round(project.height * 0.45);
+        break;
+    }
+
+    // Offset downwards if this slot is already occupied
+    const isOccupied = project.layers.some(
+      (l) => !l.isHidden && Math.abs(l.y - targetY) < 45
+    );
+    if (isOccupied) {
+      targetY = Math.min(project.height - 180, targetY + 55);
+    }
 
     switch (presetType) {
       case 'title':
@@ -272,7 +305,7 @@ export default function App() {
           type: 'text',
           name: 'Titolo Grande',
           x: centerX,
-          y: centerY,
+          y: targetY,
           width: contentW,
           height: 150,
           rotation: 0,
@@ -298,7 +331,7 @@ export default function App() {
           type: 'text',
           name: 'Sottotitolo',
           x: centerX,
-          y: centerY,
+          y: targetY,
           width: contentW,
           height: 70,
           rotation: 0,
@@ -324,7 +357,7 @@ export default function App() {
           type: 'text',
           name: 'Citazione Poetica',
           x: centerX,
-          y: centerY,
+          y: targetY,
           width: contentW,
           height: 180,
           rotation: 0,
@@ -344,14 +377,15 @@ export default function App() {
         };
         break;
 
-      case 'badge':
+      case 'badge': {
+        const badgeW = Math.round(project.width * 0.38);
         newLayer = {
           id,
           type: 'text',
           name: 'Badge Tag',
-          x: Math.round(project.width * 0.32),
-          y: centerY,
-          width: Math.round(project.width * 0.36),
+          x: Math.round((project.width - badgeW) / 2),
+          y: targetY,
+          width: badgeW,
           height: 58,
           rotation: 0,
           opacity: 1,
@@ -372,6 +406,7 @@ export default function App() {
           backgroundBorderRadius: 24,
         };
         break;
+      }
 
       case 'handwriting':
         newLayer = {
@@ -379,7 +414,7 @@ export default function App() {
           type: 'text',
           name: 'Nota Spontanea',
           x: centerX,
-          y: centerY,
+          y: targetY,
           width: contentW,
           height: 90,
           rotation: -3,
@@ -406,7 +441,7 @@ export default function App() {
           type: 'text',
           name: 'Paragrafo Testo',
           x: centerX,
-          y: centerY,
+          y: targetY,
           width: contentW,
           height: 180,
           rotation: 0,
@@ -454,12 +489,21 @@ export default function App() {
     const contentW = Math.min(840, Math.round(project.width * 0.85));
     const h = Math.max(70, Math.round(options.fontSize * 2.2));
 
+    let customY = Math.round((project.height - h) / 2);
+    const isCustomSlotOccupied = project.layers.some(
+      (l) => !l.isHidden && Math.abs(l.y - customY) < 40
+    );
+    if (isCustomSlotOccupied) {
+      const textCount = project.layers.filter((l) => l.type === 'text').length;
+      customY = Math.min(project.height - h - 50, customY + (textCount % 4) * 45);
+    }
+
     const newLayer: TextLayer = {
       id,
       type: 'text',
       name: options.text.trim().slice(0, 24) || 'Testo Libero',
       x: Math.round((project.width - contentW) / 2),
-      y: Math.round((project.height - h) / 2),
+      y: customY,
       width: contentW,
       height: h,
       rotation: 0,
@@ -495,12 +539,15 @@ export default function App() {
     const shapeDef = SHAPE_LIST.find((s) => s.type === shapeType) || SHAPE_LIST[0];
     const id = 'shape_' + Date.now();
 
+    const shapeCount = project.layers.filter((l) => l.type === 'shape').length;
+    const offset = (shapeCount % 4) * 28;
+
     const newLayer: Layer = {
       id,
       type: 'shape',
       name: shapeDef.name,
-      x: Math.round((project.width - shapeDef.defaultWidth) / 2),
-      y: Math.round((project.height - shapeDef.defaultHeight) / 2),
+      x: Math.round((project.width - shapeDef.defaultWidth) / 2) + offset,
+      y: Math.round((project.height - shapeDef.defaultHeight) / 2) + offset,
       width: shapeDef.defaultWidth,
       height: shapeDef.defaultHeight,
       rotation: 0,
@@ -528,12 +575,15 @@ export default function App() {
   const handleAddIconLayer = (iconName: string) => {
     const id = 'icon_' + Date.now();
     const size = 120;
+    const iconCount = project.layers.filter((l) => l.type === 'icon').length;
+    const offset = (iconCount % 4) * 32;
+
     const newLayer: Layer = {
       id,
       type: 'icon',
       name: `Icona ${iconName}`,
-      x: Math.round((project.width - size) / 2),
-      y: Math.round((project.height - size) / 2),
+      x: Math.round((project.width - size) / 2) + offset,
+      y: Math.round((project.height - size) / 2) + offset,
       width: size,
       height: size,
       rotation: 0,
@@ -559,13 +609,15 @@ export default function App() {
     const id = 'img_' + Date.now();
     const w = Math.round(project.width * 0.6);
     const h = Math.round(project.height * 0.5);
+    const imgCount = project.layers.filter((l) => l.type === 'image').length;
+    const offset = (imgCount % 4) * 30;
 
     const newLayer: Layer = {
       id,
       type: 'image',
       name,
-      x: Math.round((project.width - w) / 2),
-      y: Math.round((project.height - h) / 2),
+      x: Math.round((project.width - w) / 2) + offset,
+      y: Math.round((project.height - h) / 2) + offset,
       width: w,
       height: h,
       rotation: 0,
@@ -656,9 +708,20 @@ export default function App() {
     handleReorderLayer(idx, idx - 1);
   };
 
-  // Align layer on canvas
+  // Align layer on canvas or nudge position
   const handleAlignLayer = (
-    alignment: 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom'
+    alignment:
+      | 'left'
+      | 'center-h'
+      | 'right'
+      | 'top'
+      | 'center-v'
+      | 'bottom'
+      | 'center-both'
+      | 'nudge-up'
+      | 'nudge-down'
+      | 'nudge-left'
+      | 'nudge-right'
   ) => {
     const layer = project.layers.find((l) => l.id === selectedLayerId);
     if (!layer) return;
@@ -674,7 +737,86 @@ export default function App() {
     if (alignment === 'center-v') newY = Math.round((project.height - layer.height) / 2);
     if (alignment === 'bottom') newY = Math.round(project.height - layer.height - 40);
 
+    if (alignment === 'center-both') {
+      newX = Math.round((project.width - layer.width) / 2);
+      newY = Math.round((project.height - layer.height) / 2);
+    }
+
+    if (alignment === 'nudge-up') newY = Math.max(0, layer.y - 20);
+    if (alignment === 'nudge-down') newY = Math.min(project.height - layer.height, layer.y + 20);
+    if (alignment === 'nudge-left') newX = Math.max(0, layer.x - 20);
+    if (alignment === 'nudge-right') newX = Math.min(project.width - layer.width, layer.x + 20);
+
     handleUpdateLayer(layer.id, { x: newX, y: newY });
+  };
+
+  // Auto-arrange and stack layers vertically to eliminate all overlaps
+  const handleAutoStackLayers = () => {
+    const visibleLayers = project.layers.filter((l) => !l.isHidden && !l.isLocked);
+    const contentLayers = visibleLayers.filter(
+      (l) => l.width < project.width * 0.95 || l.height < project.height * 0.95
+    );
+    if (contentLayers.length <= 1) return;
+
+    // Sort by current Y coordinate
+    const sorted = [...contentLayers].sort((a, b) => a.y - b.y);
+
+    const gap = 24;
+    const totalContentHeight =
+      sorted.reduce((sum, l) => sum + l.height, 0) + gap * (sorted.length - 1);
+    const startY = Math.max(60, Math.round((project.height - totalContentHeight) / 2));
+
+    const updatedLayers = project.layers.map((layer) => {
+      const idx = sorted.findIndex((cl) => cl.id === layer.id);
+      if (idx === -1) return layer;
+
+      let y = startY;
+      for (let i = 0; i < idx; i++) {
+        y += sorted[i].height + gap;
+      }
+      const x = Math.round((project.width - layer.width) / 2);
+      return { ...layer, x, y };
+    });
+
+    const newProj: ProjectState = { ...project, layers: updatedLayers };
+    setProject(newProj);
+    pushHistory(newProj);
+  };
+
+  // Distribute layers vertically with equal spacing
+  const handleDistributeLayers = () => {
+    const visibleLayers = project.layers.filter((l) => !l.isHidden && !l.isLocked);
+    const contentLayers = visibleLayers.filter(
+      (l) => l.width < project.width * 0.95 || l.height < project.height * 0.95
+    );
+    if (contentLayers.length <= 2) {
+      handleAutoStackLayers();
+      return;
+    }
+
+    const sorted = [...contentLayers].sort((a, b) => a.y - b.y);
+    const topY = sorted[0].y;
+    const lastLayer = sorted[sorted.length - 1];
+    const bottomY = lastLayer.y + lastLayer.height;
+
+    const totalHeight = sorted.reduce((sum, l) => sum + l.height, 0);
+    const availableSpace = Math.max(0, bottomY - topY - totalHeight);
+    const gap = Math.round(availableSpace / (sorted.length - 1));
+
+    const updatedLayers = project.layers.map((layer) => {
+      const idx = sorted.findIndex((cl) => cl.id === layer.id);
+      if (idx === -1 || idx === 0 || idx === sorted.length - 1) return layer;
+
+      let y = topY;
+      for (let i = 0; i < idx; i++) {
+        y += sorted[i].height + gap;
+      }
+      return { ...layer, y };
+    });
+
+    const newProj: ProjectState = { ...project, layers: updatedLayers };
+    setProject(newProj);
+    pushHistory(newProj);
   };
 
   // Clear canvas modal trigger
@@ -935,6 +1077,10 @@ export default function App() {
           onToggleLayerVisibility={handleToggleLayerVisibility}
           onToggleLayerLock={handleToggleLayerLock}
           onDeleteLayer={handleDeleteLayer}
+          onBringToFront={handleBringToFront}
+          onSendToBack={handleSendToBack}
+          onAutoStackLayers={handleAutoStackLayers}
+          onDistributeLayers={handleDistributeLayers}
         />
 
         {/* Center Interactive Canvas Stage */}
@@ -961,6 +1107,8 @@ export default function App() {
           onSendBackward={handleSendBackward}
           onChangePreset={handleChangePreset}
           onAlignLayer={handleAlignLayer}
+          onAutoStackLayers={handleAutoStackLayers}
+          onDistributeLayers={handleDistributeLayers}
           customFonts={customFonts}
           onAddCustomFont={handleAddCustomFont}
           onRemoveCustomFont={handleRemoveCustomFont}

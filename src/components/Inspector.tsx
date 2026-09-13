@@ -40,6 +40,13 @@ import {
   Image as ImageIcon,
   RefreshCw,
   Info,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  LayoutList,
+  ArrowUpDown,
+  Move,
 } from 'lucide-react';
 
 interface InspectorProps {
@@ -54,8 +61,21 @@ interface InspectorProps {
   onSendBackward?: (id: string) => void;
   onChangePreset: (preset: CanvasPresetId) => void;
   onAlignLayer: (
-    alignment: 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom'
+    alignment:
+      | 'left'
+      | 'center-h'
+      | 'right'
+      | 'top'
+      | 'center-v'
+      | 'bottom'
+      | 'center-both'
+      | 'nudge-up'
+      | 'nudge-down'
+      | 'nudge-left'
+      | 'nudge-right'
   ) => void;
+  onAutoStackLayers?: () => void;
+  onDistributeLayers?: () => void;
   customFonts?: FontDefinition[];
   onAddCustomFont?: (font: FontDefinition) => void;
   onRemoveCustomFont?: (family: string) => void;
@@ -74,6 +94,8 @@ export const Inspector: React.FC<InspectorProps> = ({
   onSendBackward,
   onChangePreset,
   onAlignLayer,
+  onAutoStackLayers,
+  onDistributeLayers,
   customFonts = [],
   onAddCustomFont,
   onRemoveCustomFont,
@@ -130,6 +152,36 @@ export const Inspector: React.FC<InspectorProps> = ({
               </span>
             </div>
           </div>
+
+          {/* Scene Organization Tools */}
+          {project.layers.length > 1 && (
+            <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/70 space-y-2">
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-indigo-300">
+                Sistemazione Scena
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Ordina o separa automaticamente tutti gli elementi presenti sulla tela:
+              </p>
+              <div className="grid grid-cols-1 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => onAutoStackLayers && onAutoStackLayers()}
+                  className="w-full flex items-center justify-center space-x-2 py-2 px-3 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 rounded-lg text-indigo-200 text-xs font-medium transition-colors"
+                >
+                  <LayoutList className="w-3.5 h-3.5" />
+                  <span>Disponi in Colonna (Separa)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDistributeLayers && onDistributeLayers()}
+                  className="w-full flex items-center justify-center space-x-2 py-2 px-3 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-lg text-slate-200 text-xs font-medium transition-colors"
+                >
+                  <ArrowUpDown className="w-3.5 h-3.5" />
+                  <span>Distribuisci Spazi Verticali</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Quick Shortcuts Guide */}
           <div className="bg-slate-800/40 rounded-xl p-3 border border-slate-700/50 space-y-2">
@@ -217,10 +269,19 @@ export const Inspector: React.FC<InspectorProps> = ({
       </div>
 
       {/* Layer Alignment Shortcuts */}
-      <div className="space-y-1.5">
-        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-          Allineamento su Tela
-        </label>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            Allineamento su Tela
+          </label>
+          <button
+            onClick={() => onAlignLayer('center-both')}
+            title="Centra perfettamente sia in orizzontale che in verticale"
+            className="text-[10px] text-indigo-300 hover:text-white bg-indigo-600/30 hover:bg-indigo-600/50 px-2 py-0.5 rounded border border-indigo-500/30 transition-colors"
+          >
+            Centra Entrambi
+          </button>
+        </div>
         <div className="grid grid-cols-6 gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/80">
           <button
             onClick={() => onAlignLayer('left')}
@@ -265,9 +326,47 @@ export const Inspector: React.FC<InspectorProps> = ({
             <AlignEndVertical className="w-3.5 h-3.5" />
           </button>
         </div>
+
+        {/* 4-Way Rapid Nudge & Separation Pad */}
+        <div className="bg-slate-800/60 p-2 rounded-xl border border-slate-700/60 flex items-center justify-between">
+          <div className="flex items-center space-x-1.5 text-slate-400">
+            <Move className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="text-[10px] font-medium text-slate-300">Sposta di 20px:</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={() => onAlignLayer('nudge-left')}
+              title="Sposta a Sinistra di 20px"
+              className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-200 hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => onAlignLayer('nudge-up')}
+              title="Sposta in Alto di 20px"
+              className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-200 hover:text-white transition-colors"
+            >
+              <ArrowUp className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => onAlignLayer('nudge-down')}
+              title="Sposta in Basso di 20px"
+              className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-200 hover:text-white transition-colors"
+            >
+              <ArrowDown className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => onAlignLayer('nudge-right')}
+              title="Sposta a Destra di 20px"
+              className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-200 hover:text-white transition-colors"
+            >
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Layer Depth / Order */}
+      {/* Layer Depth / Order & Scene Arrangement */}
       {(() => {
         const layerIndex = project.layers.findIndex((l) => l.id === selectedLayer.id);
         const totalLayers = project.layers.length;
@@ -278,7 +377,7 @@ export const Inspector: React.FC<InspectorProps> = ({
           <div className="space-y-2 bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/60">
             <div className="flex items-center justify-between">
               <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Sovrapposizione Livelli
+                Sovrapposizione & Livelli
               </label>
               {layerIndex >= 0 && (
                 <span className="text-[10px] font-medium bg-slate-700/70 text-indigo-300 px-2 py-0.5 rounded-full">
@@ -332,6 +431,35 @@ export const Inspector: React.FC<InspectorProps> = ({
                 <span className="truncate">In Cima</span>
               </button>
             </div>
+
+            {/* Scene-wide layout buttons when multiple layers exist */}
+            {totalLayers > 1 && (
+              <div className="pt-2 border-t border-slate-700/60 space-y-1.5">
+                <span className="text-[10px] font-semibold text-slate-400 block uppercase tracking-wider">
+                  Sistemazione su Tutta la Scena
+                </span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onAutoStackLayers && onAutoStackLayers()}
+                    title="Disponi ed elimina ogni sovrapposizione allineando gli elementi in colonna"
+                    className="flex items-center justify-center space-x-1 py-1.5 px-1 text-[10px] bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 rounded-lg text-indigo-200 transition-colors"
+                  >
+                    <LayoutList className="w-3 h-3" />
+                    <span className="truncate">Disponi in Colonna</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDistributeLayers && onDistributeLayers()}
+                    title="Distribuisci equamente lo spazio verticale tra gli elementi"
+                    className="flex items-center justify-center space-x-1 py-1.5 px-1 text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-200 transition-colors"
+                  >
+                    <ArrowUpDown className="w-3 h-3" />
+                    <span className="truncate">Distribuisci Spazi</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         );
       })()}
