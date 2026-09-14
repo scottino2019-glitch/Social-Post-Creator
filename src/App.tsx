@@ -750,32 +750,41 @@ export default function App() {
     handleUpdateLayer(layer.id, { x: newX, y: newY });
   };
 
-  // Auto-arrange and stack layers vertically to eliminate all overlaps
-  const handleAutoStackLayers = () => {
-    const visibleLayers = project.layers.filter((l) => !l.isHidden && !l.isLocked);
-    const contentLayers = visibleLayers.filter(
-      (l) => l.width < project.width * 0.95 || l.height < project.height * 0.95
+  // Separate overlapping text layers cleanly without altering horizontal positions
+  const handleSeparateOverlappingTexts = () => {
+    const textLayers = project.layers.filter(
+      (l) => l.type === 'text' && !l.isHidden && !l.isLocked
     );
-    if (contentLayers.length <= 1) return;
+    if (textLayers.length <= 1) return;
 
-    // Sort by current Y coordinate
-    const sorted = [...contentLayers].sort((a, b) => a.y - b.y);
+    // Sort texts by their current vertical center
+    const sorted = [...textLayers].sort(
+      (a, b) => a.y + a.height / 2 - (b.y + b.height / 2)
+    );
 
     const gap = 24;
-    const totalContentHeight =
+    const totalH =
       sorted.reduce((sum, l) => sum + l.height, 0) + gap * (sorted.length - 1);
-    const startY = Math.max(60, Math.round((project.height - totalContentHeight) / 2));
+    const midY =
+      (sorted[0].y + (sorted[sorted.length - 1].y + sorted[sorted.length - 1].height)) / 2;
+    const startY = Math.max(
+      40,
+      Math.min(project.height - totalH - 40, Math.round(midY - totalH / 2))
+    );
+
+    const newYMap = new Map<string, number>();
+    let currentY = startY;
+    for (const l of sorted) {
+      newYMap.set(l.id, currentY);
+      currentY += l.height + gap;
+    }
 
     const updatedLayers = project.layers.map((layer) => {
-      const idx = sorted.findIndex((cl) => cl.id === layer.id);
-      if (idx === -1) return layer;
-
-      let y = startY;
-      for (let i = 0; i < idx; i++) {
-        y += sorted[i].height + gap;
+      if (newYMap.has(layer.id)) {
+        // Keep original x, only update y!
+        return { ...layer, y: newYMap.get(layer.id)! };
       }
-      const x = Math.round((project.width - layer.width) / 2);
-      return { ...layer, x, y };
+      return layer;
     });
 
     const newProj: ProjectState = { ...project, layers: updatedLayers };
@@ -783,14 +792,50 @@ export default function App() {
     pushHistory(newProj);
   };
 
-  // Distribute layers vertically with equal spacing
+  // Adjust spacing between stacked content layers incrementally (+/- pixels)
+  const handleAdjustSpacing = (delta: number) => {
+    const textLayers = project.layers.filter(
+      (l) => l.type === 'text' && !l.isHidden && !l.isLocked
+    );
+    const targetLayers =
+      textLayers.length >= 2
+        ? textLayers
+        : project.layers.filter(
+            (l) =>
+              !l.isHidden &&
+              !l.isLocked &&
+              (l.width < project.width * 0.85 || l.height < project.height * 0.85)
+          );
+
+    if (targetLayers.length < 2) return;
+
+    const sorted = [...targetLayers].sort((a, b) => a.y - b.y);
+    const updatedLayers = project.layers.map((layer) => {
+      const idx = sorted.findIndex((cl) => cl.id === layer.id);
+      if (idx === -1 || idx === 0) return layer;
+      const newY = Math.max(
+        20,
+        Math.min(project.height - layer.height - 20, layer.y + idx * delta)
+      );
+      return { ...layer, y: newY };
+    });
+
+    const newProj: ProjectState = { ...project, layers: updatedLayers };
+    setProject(newProj);
+    pushHistory(newProj);
+  };
+
+  // Distribute layers vertically with equal spacing - preserves X coordinates and ensures minimum comfortable gap
   const handleDistributeLayers = () => {
     const visibleLayers = project.layers.filter((l) => !l.isHidden && !l.isLocked);
+    // Exclude full-canvas backdrop cards or frames
     const contentLayers = visibleLayers.filter(
-      (l) => l.width < project.width * 0.95 || l.height < project.height * 0.95
+      (l) => l.width < project.width * 0.85 || l.height < project.height * 0.85
     );
-    if (contentLayers.length <= 2) {
-      handleAutoStackLayers();
+    if (contentLayers.length <= 1) return;
+
+    if (contentLayers.length === 2) {
+      handleSeparateOverlappingTexts();
       return;
     }
 
@@ -799,24 +844,59 @@ export default function App() {
     const lastLayer = sorted[sorted.length - 1];
     const bottomY = lastLayer.y + lastLayer.height;
 
-    const totalHeight = sorted.reduce((sum, l) => sum + l.height, 0);
-    const availableSpace = Math.max(0, bottomY - topY - totalHeight);
-    const gap = Math.round(availableSpace / (sorted.length - 1));
+    const totalElementsHeight = sorted.reduce((sum, l) => sum + l.height, 0);
+    const availableSpace = bottomY - topY - totalElementsHeight;
+    const minGap = 20;
+
+    const newYMap = new Map<string, number>();
+
+    if (availableSpace >= (sorted.length - 1) * minGap) {
+      // Ample space available: distribute evenly between topmost and bottommost element
+      const gap = Math.round(availableSpace / (sorted.length - 1));
+      let currentY = topY;
+      for (let i = 0; i < sorted.length; i++) {
+        if (i === 0) {
+          newYMap.set(sorted[0].id, topY);
+          currentY += sorted[0].height + gap;
+        } else if (i === sorted.length - 1) {
+          newYMap.set(lastLayer.id, bottomY - lastLayer.height);
+        } else {
+          newYMap.set(sorted[i].id, currentY);
+          currentY += sorted[i].height + gap;
+        }
+      }
+    } else {
+      // Elements are overlapping or cramped: separate them with a clean 24px gap centered at current position
+      const safeGap = 24;
+      const neededHeight = totalElementsHeight + safeGap * (sorted.length - 1);
+      const midY = (topY + bottomY) / 2;
+      let startY = Math.max(
+        40,
+        Math.min(project.height - neededHeight - 40, Math.round(midY - neededHeight / 2))
+      );
+
+      for (const layer of sorted) {
+        newYMap.set(layer.id, startY);
+        startY += layer.height + safeGap;
+      }
+    }
 
     const updatedLayers = project.layers.map((layer) => {
-      const idx = sorted.findIndex((cl) => cl.id === layer.id);
-      if (idx === -1 || idx === 0 || idx === sorted.length - 1) return layer;
-
-      let y = topY;
-      for (let i = 0; i < idx; i++) {
-        y += sorted[i].height + gap;
+      if (newYMap.has(layer.id)) {
+        // Only update vertical Y, never alter X!
+        return { ...layer, y: newYMap.get(layer.id)! };
       }
-      return { ...layer, y };
+      return layer;
     });
 
     const newProj: ProjectState = { ...project, layers: updatedLayers };
     setProject(newProj);
     pushHistory(newProj);
+  };
+
+  // Auto-arrange content in a clean vertical column (preserves background frames)
+  const handleAutoStackLayers = () => {
+    handleSeparateOverlappingTexts();
   };
 
   // Clear canvas modal trigger
@@ -1081,6 +1161,8 @@ export default function App() {
           onSendToBack={handleSendToBack}
           onAutoStackLayers={handleAutoStackLayers}
           onDistributeLayers={handleDistributeLayers}
+          onSeparateTexts={handleSeparateOverlappingTexts}
+          onAdjustSpacing={handleAdjustSpacing}
         />
 
         {/* Center Interactive Canvas Stage */}
@@ -1109,6 +1191,8 @@ export default function App() {
           onAlignLayer={handleAlignLayer}
           onAutoStackLayers={handleAutoStackLayers}
           onDistributeLayers={handleDistributeLayers}
+          onSeparateTexts={handleSeparateOverlappingTexts}
+          onAdjustSpacing={handleAdjustSpacing}
           customFonts={customFonts}
           onAddCustomFont={handleAddCustomFont}
           onRemoveCustomFont={handleRemoveCustomFont}

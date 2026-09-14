@@ -63,6 +63,7 @@ export const FontPicker: React.FC<FontPickerProps> = ({
 
       if (category === 'all') return true;
       if (category === 'custom') return f.isCustom;
+      if (category === 'languages') return !!f.scriptBadge;
       return f.category === category;
     });
   }, [allFonts, search, category]);
@@ -242,6 +243,7 @@ export const FontPicker: React.FC<FontPickerProps> = ({
                 { id: 'all', label: 'Tutti' },
                 { id: 'custom', label: `⭐ Personali (${customFonts.length})` },
                 { id: 'handwriting', label: '✍️ Corsivi' },
+                { id: 'languages', label: '🌐 Calligrafie & Lingue' },
                 { id: 'serif', label: '👑 Serif' },
                 { id: 'display', label: '⚡ Display' },
                 { id: 'sans', label: '💼 Sans' },
@@ -277,6 +279,18 @@ export const FontPicker: React.FC<FontPickerProps> = ({
           ) : (
             filteredFonts.map((font) => {
               const isSelected = currentFont.toLowerCase() === font.family.toLowerCase();
+
+              // Tailor preview text to demonstrate script if default sample text is used
+              let displayPreview = sampleText || 'Creatività & Stile ✨ 123';
+              if (sampleText === 'Creatività & Stile ✨ 123') {
+                if (font.scriptBadge?.includes('Cirillico')) displayPreview = 'Красота и Стиль ✨ 123';
+                else if (font.scriptBadge?.includes('Arabo')) displayPreview = 'الإبداع والأناقة ✨ 123';
+                else if (font.scriptBadge?.includes('Devanagari')) displayPreview = 'कला और सौंदर्य ✨ 123';
+                else if (font.scriptBadge?.includes('Thai')) displayPreview = 'ศิลปะและความคิดสร้างสรรค์ ✨ 123';
+                else if (font.scriptBadge?.includes('Giapponese')) displayPreview = '美しい書道デザイン ✨ 123';
+                else if (font.scriptBadge?.includes('Calligrafia')) displayPreview = 'Eleganza & Calligrafia ✨';
+              }
+
               return (
                 <div
                   key={font.family}
@@ -292,13 +306,18 @@ export const FontPicker: React.FC<FontPickerProps> = ({
                 >
                   {/* Info */}
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center flex-wrap gap-1.5">
                       <span className="text-xs font-bold text-slate-200 group-hover:text-white truncate">
                         {font.name}
                       </span>
                       {font.isCustom && (
                         <span className="text-[9px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded">
                           Personale
+                        </span>
+                      )}
+                      {font.scriptBadge && (
+                        <span className="text-[9px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.2 rounded">
+                          {font.scriptBadge}
                         </span>
                       )}
                       <span className="text-[9px] text-slate-400 bg-slate-700/60 px-1.5 py-0.2 rounded capitalize">
@@ -311,7 +330,7 @@ export const FontPicker: React.FC<FontPickerProps> = ({
                       className="text-lg text-slate-100 mt-1 truncate"
                       style={{ fontFamily: font.family }}
                     >
-                      {sampleText || 'Anteprima testo con questo stile'}
+                      {displayPreview}
                     </div>
 
                     <span className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">

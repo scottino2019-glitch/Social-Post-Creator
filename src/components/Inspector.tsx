@@ -76,6 +76,8 @@ interface InspectorProps {
   ) => void;
   onAutoStackLayers?: () => void;
   onDistributeLayers?: () => void;
+  onSeparateTexts?: () => void;
+  onAdjustSpacing?: (delta: number) => void;
   customFonts?: FontDefinition[];
   onAddCustomFont?: (font: FontDefinition) => void;
   onRemoveCustomFont?: (family: string) => void;
@@ -96,6 +98,8 @@ export const Inspector: React.FC<InspectorProps> = ({
   onAlignLayer,
   onAutoStackLayers,
   onDistributeLayers,
+  onSeparateTexts,
+  onAdjustSpacing,
   customFonts = [],
   onAddCustomFont,
   onRemoveCustomFont,
@@ -155,21 +159,24 @@ export const Inspector: React.FC<InspectorProps> = ({
 
           {/* Scene Organization Tools */}
           {project.layers.length > 1 && (
-            <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/70 space-y-2">
-              <h3 className="text-[11px] font-bold uppercase tracking-wider text-indigo-300">
-                Sistemazione Scena
-              </h3>
-              <p className="text-[11px] text-slate-400">
-                Ordina o separa automaticamente tutti gli elementi presenti sulla tela:
+            <div className="bg-slate-800/60 rounded-xl p-3 border border-slate-700/70 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[11px] font-bold uppercase tracking-wider text-indigo-300">
+                  Sistemazione Scena
+                </h3>
+                <span className="text-[9px] text-slate-400">Non altera X</span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Risolvi sovrapposizioni e allinea gli elementi con spaziatura uniforme:
               </p>
-              <div className="grid grid-cols-1 gap-2 pt-1">
+              <div className="grid grid-cols-1 gap-1.5 pt-0.5">
                 <button
                   type="button"
-                  onClick={() => onAutoStackLayers && onAutoStackLayers()}
+                  onClick={() => onSeparateTexts ? onSeparateTexts() : onAutoStackLayers?.()}
                   className="w-full flex items-center justify-center space-x-2 py-2 px-3 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 rounded-lg text-indigo-200 text-xs font-medium transition-colors"
                 >
                   <LayoutList className="w-3.5 h-3.5" />
-                  <span>Disponi in Colonna (Separa)</span>
+                  <span>Separa Testi Sovrapposti</span>
                 </button>
                 <button
                   type="button"
@@ -177,8 +184,31 @@ export const Inspector: React.FC<InspectorProps> = ({
                   className="w-full flex items-center justify-center space-x-2 py-2 px-3 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-lg text-slate-200 text-xs font-medium transition-colors"
                 >
                   <ArrowUpDown className="w-3.5 h-3.5" />
-                  <span>Distribuisci Spazi Verticali</span>
+                  <span>Distribuisci Spazi Equi</span>
                 </button>
+              </div>
+
+              {/* Incremental Spacing Adjuster */}
+              <div className="flex items-center justify-between bg-slate-900/60 p-2 rounded-lg border border-slate-700/50 pt-1.5">
+                <span className="text-[10px] text-slate-400 font-medium">Distanza tra livelli:</span>
+                <div className="flex items-center space-x-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onAdjustSpacing && onAdjustSpacing(-15)}
+                    title="Riduci spazio di 15px (compatta)"
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-200 hover:text-white text-[10px] font-medium transition-colors"
+                  >
+                    -15px
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onAdjustSpacing && onAdjustSpacing(15)}
+                    title="Aumenta spazio di 15px (allontana)"
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-indigo-300 hover:text-white text-[10px] font-medium transition-colors"
+                  >
+                    +15px
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -434,29 +464,55 @@ export const Inspector: React.FC<InspectorProps> = ({
 
             {/* Scene-wide layout buttons when multiple layers exist */}
             {totalLayers > 1 && (
-              <div className="pt-2 border-t border-slate-700/60 space-y-1.5">
-                <span className="text-[10px] font-semibold text-slate-400 block uppercase tracking-wider">
-                  Sistemazione su Tutta la Scena
-                </span>
+              <div className="pt-2.5 border-t border-slate-700/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-slate-400 block uppercase tracking-wider">
+                    Sistemazione e Spazi
+                  </span>
+                  <span className="text-[9px] text-slate-500">Non altera X</span>
+                </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   <button
                     type="button"
-                    onClick={() => onAutoStackLayers && onAutoStackLayers()}
-                    title="Disponi ed elimina ogni sovrapposizione allineando gli elementi in colonna"
+                    onClick={() => onSeparateTexts ? onSeparateTexts() : onAutoStackLayers?.()}
+                    title="Separa i testi sovrapposti mantenendo le posizioni orizzontali"
                     className="flex items-center justify-center space-x-1 py-1.5 px-1 text-[10px] bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 rounded-lg text-indigo-200 transition-colors"
                   >
                     <LayoutList className="w-3 h-3" />
-                    <span className="truncate">Disponi in Colonna</span>
+                    <span className="truncate">Separa Testi</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onDistributeLayers && onDistributeLayers()}
-                    title="Distribuisci equamente lo spazio verticale tra gli elementi"
+                    title="Distribuisce equamente lo spazio verticale tra gli elementi senza accavallarli"
                     className="flex items-center justify-center space-x-1 py-1.5 px-1 text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-200 transition-colors"
                   >
                     <ArrowUpDown className="w-3 h-3" />
-                    <span className="truncate">Distribuisci Spazi</span>
+                    <span className="truncate">Spazi Equi</span>
                   </button>
+                </div>
+
+                {/* Incremental Spacing Adjuster */}
+                <div className="flex items-center justify-between bg-slate-900/60 p-1.5 rounded-lg border border-slate-700/50">
+                  <span className="text-[9px] text-slate-400 font-medium pl-0.5">Distanza livelli:</span>
+                  <div className="flex items-center space-x-1">
+                    <button
+                      type="button"
+                      onClick={() => onAdjustSpacing && onAdjustSpacing(-15)}
+                      title="Riduci spazio di 15px (compatta)"
+                      className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-200 hover:text-white text-[9px] font-medium transition-colors"
+                    >
+                      -15px
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onAdjustSpacing && onAdjustSpacing(15)}
+                      title="Aumenta spazio di 15px (allontana)"
+                      className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-indigo-300 hover:text-white text-[9px] font-medium transition-colors"
+                    >
+                      +15px
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -650,10 +706,31 @@ export const Inspector: React.FC<InspectorProps> = ({
                     ))}
                   </optgroup>
                 )}
-                <optgroup label="Caratteri Predefiniti">
-                  {FONT_LIST.map((f) => (
+                <optgroup label="✍️ Corsivi & Calligrafia Speciale">
+                  {FONT_LIST.filter((f) => f.category === 'handwriting').map((f) => (
                     <option key={f.family} value={f.family}>
-                      {f.name} ({f.category})
+                      {f.name} {f.scriptBadge ? `[${f.scriptBadge}]` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="⚡ Display & Bold">
+                  {FONT_LIST.filter((f) => f.category === 'display').map((f) => (
+                    <option key={f.family} value={f.family}>
+                      {f.name}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="👑 Serif">
+                  {FONT_LIST.filter((f) => f.category === 'serif').map((f) => (
+                    <option key={f.family} value={f.family}>
+                      {f.name}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="💼 Sans-serif & Mono">
+                  {FONT_LIST.filter((f) => f.category === 'sans' || f.category === 'mono').map((f) => (
+                    <option key={f.family} value={f.family}>
+                      {f.name}
                     </option>
                   ))}
                 </optgroup>

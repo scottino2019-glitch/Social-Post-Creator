@@ -103,6 +103,8 @@ interface SidebarProps {
   onSendToBack?: (id: string) => void;
   onAutoStackLayers?: () => void;
   onDistributeLayers?: () => void;
+  onSeparateTexts?: () => void;
+  onAdjustSpacing?: (delta: number) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -134,6 +136,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSendToBack,
   onAutoStackLayers,
   onDistributeLayers,
+  onSeparateTexts,
+  onAdjustSpacing,
 }) => {
   // Filters & searches
   const [templateCategory, setTemplateCategory] = useState<string>('all');
@@ -871,6 +875,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <span className="text-[9px] text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded shrink-0">
                         Personale
                       </span>
+                    ) : font.scriptBadge ? (
+                      <span className="text-[9px] text-indigo-300 bg-indigo-500/20 px-1.5 py-0.5 rounded shrink-0">
+                        {font.scriptBadge}
+                      </span>
                     ) : (
                       <span className="text-[9px] text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded capitalize shrink-0">
                         {font.category}
@@ -1347,27 +1355,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {/* Quick Auto-arrangement on Scene */}
             {layers.length > 1 && (
-              <div className="bg-slate-800/80 p-2 rounded-xl border border-slate-700/80 space-y-1.5">
-                <span className="text-[10px] font-semibold text-indigo-300 block uppercase tracking-wider">
-                  Sistemazione sulla Scena
-                </span>
+              <div className="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-indigo-300 block uppercase tracking-wider">
+                    Sistemazione e Spazi
+                  </span>
+                  <span className="text-[9px] text-slate-400">Non altera l'allineamento orizzontale</span>
+                </div>
+
                 <div className="grid grid-cols-2 gap-1.5">
                   <button
-                    onClick={() => onAutoStackLayers && onAutoStackLayers()}
-                    title="Allinea e separa tutti gli elementi in colonna senza sovrapporli"
+                    onClick={() => onSeparateTexts ? onSeparateTexts() : onAutoStackLayers?.()}
+                    title="Separa i testi sovrapposti mantenendo le loro posizioni orizzontali intatte"
                     className="flex items-center justify-center space-x-1.5 py-1.5 px-2 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 rounded-lg text-indigo-200 text-[11px] font-medium transition-colors"
                   >
                     <LayoutList className="w-3.5 h-3.5" />
-                    <span>Disponi in Colonna</span>
+                    <span>Separa Testi</span>
                   </button>
                   <button
                     onClick={() => onDistributeLayers && onDistributeLayers()}
-                    title="Distribuisci equamente lo spazio verticale tra gli elementi"
+                    title="Distribuisce equamente lo spazio verticale tra gli elementi senza accavallarli"
                     className="flex items-center justify-center space-x-1.5 py-1.5 px-2 bg-slate-700/60 hover:bg-slate-700 border border-slate-600/60 rounded-lg text-slate-200 text-[11px] font-medium transition-colors"
                   >
                     <ArrowUpDown className="w-3.5 h-3.5" />
-                    <span>Distribuisci Spazi</span>
+                    <span>Spazi Equi</span>
                   </button>
+                </div>
+
+                {/* Incremental Spacing Adjuster */}
+                <div className="flex items-center justify-between bg-slate-900/60 p-1.5 rounded-lg border border-slate-700/50">
+                  <span className="text-[10px] text-slate-400 font-medium pl-1">Distanza tra livelli:</span>
+                  <div className="flex items-center space-x-1">
+                    <button
+                      type="button"
+                      onClick={() => onAdjustSpacing && onAdjustSpacing(-15)}
+                      title="Riduci lo spazio tra i livelli di 15px (compatta)"
+                      className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-200 hover:text-white text-[10px] font-medium transition-colors"
+                    >
+                      -15px
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onAdjustSpacing && onAdjustSpacing(15)}
+                      title="Aumenta lo spazio tra i livelli di 15px (allontana)"
+                      className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-indigo-300 hover:text-white text-[10px] font-medium transition-colors"
+                    >
+                      +15px
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
